@@ -6,7 +6,7 @@ class StockLoggerBase:
         self.conn = sqlite3.connect(':memory:')
         self.c = self.conn.cursor()
         self.create_database()
-        self.c.row_factory = self.dict_factory
+        # self.c.row_factory = self.dict_factory
 
     def __del__(self):
         self.c.close()
@@ -54,10 +54,10 @@ class StockLoggerBase:
         with self.conn:
             self.c.execute('SELECT wallet FROM users WHERE user_name=?', (user,))
             wallet = self.c.fetchone()
-        return wallet
+        return wallet if wallet is None else wallet[0]
 
     def set_wallet(self, user, amount):
-        wallet = self.get_wallet(user)['wallet']
+        wallet = self.get_wallet(user)
         current_value = wallet + amount
         with self.conn:
             self.c.execute('UPDATE users SET wallet=? WHERE user_name=?', (current_value, user))
@@ -74,7 +74,7 @@ class StockLoggerBase:
         with self.conn:
             self.c.execute('SELECT amount FROM portfolio WHERE user_id=? AND stock_id=?', (user, stock))
             amount = self.c.fetchone()
-        return amount if amount is None else amount['amount']
+        return amount if amount is None else amount[0]
 
     def set_amount(self, user, stock, amount):
         with self.conn:

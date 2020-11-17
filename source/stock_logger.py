@@ -12,7 +12,7 @@ class SqlLogger(StockLoggerBase):
         if wallet is None:
             self.add_user(user)
             wallet = self.get_wallet(user)
-        return wallet['wallet']
+        return wallet
 
     def update_portfolio(self, user, stock, amount):
         current_amount = self.get_amount(user, stock)
@@ -43,7 +43,7 @@ class SqlLogger(StockLoggerBase):
         with self.conn:
             self.c.execute('INSERT INTO transactions(user_id, stock_id, action, price, amount, date)'
                            'VALUES(?, ?, ?, ?, ?, ?)',
-                           (user, stock, action, price, amount, datetime.now()))
+                           (user, stock, action, price, amount, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
     def get_transaction(self, user):
         with self.conn:
