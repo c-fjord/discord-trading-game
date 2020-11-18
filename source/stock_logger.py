@@ -7,52 +7,48 @@ class SqlLogger(StockLoggerBase):
     def __init__(self):
         super().__init__()
 
-    def get_user_wallet(self, user):
-        wallet = self.get_wallet(user)
-        if wallet is None:
-            self.add_user(user)
-            wallet = self.get_wallet(user)
-        return wallet
+    # Users
+    def user_id(self, user, guild):
+        user_id = self.get_user_id(user, guild)
+        if user_id is None:
+            self.add_user(user, guild)
+            self.user_id(user, guild)
+        return user_id
 
-    def update_portfolio(self, user, stock, amount):
-        current_amount = self.get_amount(user, stock)
+    def get_user_wallet(self, user, guild):
+        user_id = self.user_id(user, guild)
+        return self.get_wallet(user_id)
+
+    def set_user_wallet(self, user, guild, amount):
+        user_id = self.user_id(user, guild)
+        current_amount = self.get_wallet(user_id)
+        self.set_wallet(user_id, current_amount + amount)
+
+    # Portfolio
+    def update_portfolio(self, user, guild, stock, amount):
+        user_id = self.user_id(user, guild)
+        current_amount = self.get_amount(user_id, stock)
+
         if current_amount is None:
-            self.add_stock(user, stock, amount)
-        elif current_amount == amount:
-            self.remove_portfolio(user, stock)
+            self.add_portfolio(user_id, stock, amount)
+        elif current_amount == 0:
+            self.remove_portfolio(user_id, stock)
         else:
-            self.set_amount(user, stock, current_amount + amount)
+            self.set_amount(user_id, stock, current_amount + amount)
 
-    def remove_portfolio(self, user, stock):
-        with self.conn:
-            self.c.execute('DELETE FROM portfolio WHERE user_id=? AND stock_id=?', (user, stock))
+    # Transactions
+    def log_transaction(self, user, guild, stock, action, price, amount):
+        user_id = self.user_id(user, guild)
+        date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.add_transaction(user_id, stock, action, price, amount, date)
 
-    def check_portfolio(self, user, stock):
-        with self.conn:
-            self.c.execute('SELECT * from portfolio WHERE user_id=? and stock_id=?', (user, stock))
-            row = self.c.fetchone()
-        return row
+    def get_user_transactions(self, user, guild, number=None):
+        user_id = self.user_id(user, guild)
+        self.get_transactions(user_id, number)
 
-    def get_user_portfolio(self, user):
-        with self.conn:
-            self.c.execute('SELECT * FROM portfolio WHERE user_id=?', (user,))
-            rows = self.c.fetchall()
-        return rows
-
-    def log_transaction(self, user, stock, action, price, amount):
-        with self.conn:
-            self.c.execute('INSERT INTO transactions(user_id, stock_id, action, price, amount, date)'
-                           'VALUES(?, ?, ?, ?, ?, ?)',
-                           (user, stock, action, price, amount, datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-
-    def get_transaction(self, user):
-        with self.conn:
-            self.c.execute('SELECT * FROM transactions WHERE user_id=?', (user,))
-            rows = self.c.fetchall()
-        return rows
-
-
-if __name__ == '__main__':
-    db = SqlLogger()
-    print(db.get_wallet('Fjord'))
-    # db.set_user('Fjord#100')
+    # portfolio history
+    # def log_portfolio_history(self):
+        # Get all user_ids from users
+        # Get all portfolios for each user
+        # Calc total portfolio value
+        # Insert portfolio value into portfolio_history under user_id
